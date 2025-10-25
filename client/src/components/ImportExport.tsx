@@ -11,6 +11,7 @@ export function ImportExport() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<{
     imported: number;
+    updated: number;
     skipped: number;
     errors: string[];
   } | null>(null);
@@ -54,11 +55,16 @@ export function ImportExport() {
       const result = swimStorage.importData(text);
       setImportResult(result);
 
-      if (result.imported > 0) {
+      if (result.imported > 0 || result.updated > 0) {
         window.dispatchEvent(new Event('storage-updated'));
+        const parts = [];
+        if (result.imported > 0) parts.push(`${result.imported} imported`);
+        if (result.updated > 0) parts.push(`${result.updated} updated`);
+        if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
+
         toast({
           title: "Import successful",
-          description: `Imported ${result.imported} swim times. ${result.skipped} skipped (duplicates).`,
+          description: parts.join(", ") + ".",
         });
       } else if (result.errors.length > 0) {
         toast({
@@ -162,7 +168,8 @@ export function ImportExport() {
               <p className="font-semibold">Import Results:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>{importResult.imported} swim times imported</li>
-                <li>{importResult.skipped} duplicates skipped</li>
+                <li>{importResult.updated} swim times updated (newer version)</li>
+                <li>{importResult.skipped} skipped (older or duplicate)</li>
                 {importResult.errors.length > 0 && (
                   <li className="text-destructive">
                     {importResult.errors.length} errors occurred
@@ -196,8 +203,9 @@ export function ImportExport() {
             Use this to back up your data or transfer it to another device.
           </p>
           <p>
-            <strong>Import:</strong> Loads swim times from a JSON file and merges them with your 
-            existing data. Duplicate entries (same ID) will be skipped to prevent data loss.
+            <strong>Import:</strong> Loads swim times from a JSON file and merges them with your
+            existing data. When the same entry exists in both files, the newer version (based on
+            last modification date) is kept.
           </p>
           <p>
             <strong>Data Safety:</strong> All data is stored locally in your browser. Regular 

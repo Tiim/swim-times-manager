@@ -8,6 +8,7 @@ export interface SwimTime {
   distance: number;
   poolLength: "SCM" | "SCY" | "LCM" | "LCY";
   splits?: string | null;
+  last_modified: string; // ISO date string
 }
 
 const STORAGE_KEY = "swim-times-data";
@@ -28,7 +29,29 @@ class LocalSwimStorage {
   private getAll(): SwimTime[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      if (!data) return [];
+
+      const times = JSON.parse(data);
+
+      // Migration: add last_modified to existing records that don't have it
+      let needsSave = false;
+      const migratedTimes = times.map((time: any) => {
+        if (!time.last_modified) {
+          needsSave = true;
+          return {
+            ...time,
+            last_modified: time.date || new Date().toISOString()
+          };
+        }
+        return time;
+      });
+
+      // Save migrated data back to storage if needed
+      if (needsSave) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migratedTimes));
+      }
+
+      return migratedTimes;
     } catch (error) {
       console.error("Failed to load swim times from storage:", error);
       return [];
@@ -59,11 +82,12 @@ class LocalSwimStorage {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
-  createSwimTime(swimTime: Omit<SwimTime, "id">): SwimTime {
+  createSwimTime(swimTime: Omit<SwimTime, "id" | "last_modified">): SwimTime {
     const newTime: SwimTime = {
       ...swimTime,
       id: crypto.randomUUID(),
       splits: swimTime.splits || null,
+      last_modified: new Date().toISOString(),
     };
     const times = this.getAll();
     times.push(newTime);
@@ -71,13 +95,17 @@ class LocalSwimStorage {
     return newTime;
   }
 
-  updateSwimTime(id: string, updates: Partial<Omit<SwimTime, "id">>): SwimTime | undefined {
+  updateSwimTime(id: string, updates: Partial<Omit<SwimTime, "id" | "last_modified">>): SwimTime | undefined {
     const times = this.getAll();
     const index = times.findIndex(time => time.id === id);
     if (index === -1) {
       return undefined;
     }
-    times[index] = { ...times[index], ...updates };
+    times[index] = {
+      ...times[index],
+      ...updates,
+      last_modified: new Date().toISOString()
+    };
     this.save(times);
     return times[index];
   }
@@ -162,13 +190,13 @@ class LocalSwimStorage {
     }, null, 2);
   }
 
-  // Import data from JSON, merging with existing data
-  importData(jsonData: string): { imported: number; skipped: number; errors: string[] } {
-    const result = { imported: 0, skipped: 0, errors: [] as string[] };
+  // Import data from JSON, merging with existing data based on last_modified timestamps
+  importData(jsonData: string): { imported: number; updated: number; skipped: number; errors: string[] } {
+    const result = { imported: 0, updated: 0, skipped: 0, errors: [] as string[] };
 
     try {
       const parsed = JSON.parse(jsonData);
-      let importedTimes: SwimTime[];
+      let importedTimes: any[];
 
       // Support both new format (object with version and time_entries) and legacy format (array)
       if (Array.isArray(parsed)) {
@@ -183,7 +211,7 @@ class LocalSwimStorage {
       }
 
       const existingTimes = this.getAll();
-      const existingIds = new Set(existingTimes.map(t => t.id));
+      const existingMap = new Map(existingTimes.map(t => [t.id, t]));
 
       for (const time of importedTimes) {
         // Validate required fields
@@ -194,24 +222,45 @@ class LocalSwimStorage {
           continue;
         }
 
-        // If ID exists, skip (don't overwrite)
-        if (time.id && existingIds.has(time.id)) {
-          result.skipped++;
+        // Ensure imported time has last_modified (use date as fallback for legacy data)
+        const importedLastModified = time.last_modified || time.date || new Date().toISOString();
+
+        // If ID exists, compare timestamps and keep the newer version
+        if (time.id && existingMap.has(time.id)) {
+          const existing = existingMap.get(time.id)!;
+          const existingLastModified = existing.last_modified || existing.date;
+
+          // Keep the version with the newer last_modified timestamp
+          if (new Date(importedLastModified) > new Date(existingLastModified)) {
+            // Imported version is newer, update existing
+            const updatedTime: SwimTime = {
+              ...time,
+              id: time.id,
+              splits: time.splits || null,
+              last_modified: importedLastModified,
+            };
+            existingMap.set(time.id, updatedTime);
+            result.updated++;
+          } else {
+            // Existing version is newer or same, skip
+            result.skipped++;
+          }
           continue;
         }
 
-        // Create new entry (assign new ID if missing)
+        // New entry (assign new ID if missing)
         const newTime: SwimTime = {
           ...time,
           id: time.id || crypto.randomUUID(),
           splits: time.splits || null,
+          last_modified: importedLastModified,
         };
 
-        existingTimes.push(newTime);
+        existingMap.set(newTime.id, newTime);
         result.imported++;
       }
 
-      this.save(existingTimes);
+      this.save(Array.from(existingMap.values()));
     } catch (error) {
       result.errors.push(`Failed to parse JSON: ${error}`);
     }
