@@ -26,10 +26,6 @@ export default function AddTime() {
         title: "Time added successfully",
         description: `${newTime.athleteName} - ${newTime.stroke} ${newTime.distance}m: ${newTime.measuredTime}`,
       });
-      
-      setTimeout(() => {
-        setLocation("/all-times");
-      }, 1000);
     } catch (error) {
       toast({
         title: "Error",

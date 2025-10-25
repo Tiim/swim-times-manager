@@ -31,16 +31,13 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
     e.preventDefault();
     console.log("Form submitted:", formData);
     onSubmit?.(formData);
-    setFormData({
-      date: new Date().toISOString().split("T")[0],
-      athlete: "",
-      event: "",
+    // Only reset distance, stroke, and time - keep athlete, event, date, poolLength, and splits
+    setFormData((prev) => ({
+      ...prev,
       stroke: "",
       distance: "",
-      poolLength: "",
       time: "",
-      splits: "",
-    });
+    }));
   };
 
   const updateField = (field: string, value: string) => {
