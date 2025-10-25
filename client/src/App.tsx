@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Router, Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -13,17 +13,19 @@ import AthleteProfile from "@/pages/AthleteProfile";
 import ImportExport from "@/pages/ImportExport";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+function AppRouter() {
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/athletes" component={Athletes} />
-      <Route path="/all-times" component={AllTimes} />
-      <Route path="/add-time" component={AddTime} />
-      <Route path="/import-export" component={ImportExport} />
-      <Route path="/athlete/:id" component={AthleteProfile} />
-      <Route component={NotFound} />
-    </Switch>
+    <Router base="/swim-times-manager">
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/athletes" component={Athletes} />
+        <Route path="/all-times" component={AllTimes} />
+        <Route path="/add-time" component={AddTime} />
+        <Route path="/import-export" component={ImportExport} />
+        <Route path="/athlete/:id" component={AthleteProfile} />
+        <Route component={NotFound} />
+      </Switch>
+    </Router>
   );
 }
 
@@ -45,7 +47,7 @@ export default function App() {
                 <ThemeToggle />
               </header>
               <main className="flex-1 overflow-auto p-6">
-                <Router />
+                <AppRouter />
               </main>
             </div>
           </div>
