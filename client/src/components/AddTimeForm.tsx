@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { swimStorage } from "@/lib/storage";
 
 interface AddTimeFormProps {
   onSubmit?: (data: any) => void;
@@ -19,13 +35,29 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     athlete: "",
-    event: "",
+    event: "practice",
     stroke: "",
     distance: "",
-    poolLength: "",
+    poolLength: "SCM",
     time: "",
     splits: "",
   });
+
+  const [athleteOpen, setAthleteOpen] = useState(false);
+  const [eventOpen, setEventOpen] = useState(false);
+  const [athleteSearch, setAthleteSearch] = useState("");
+  const [eventSearch, setEventSearch] = useState("");
+  const [athleteNames, setAthleteNames] = useState<string[]>([]);
+  const [eventNames, setEventNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Load unique athlete names and event names from storage
+    const times = swimStorage.getAllSwimTimes();
+    const uniqueAthletes = Array.from(new Set(times.map(t => t.athleteName))).sort();
+    const uniqueEvents = Array.from(new Set(times.map(t => t.eventName))).sort();
+    setAthleteNames(uniqueAthletes);
+    setEventNames(uniqueEvents);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,26 +98,152 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
 
             <div className="space-y-2">
               <Label htmlFor="athlete">Athlete Name</Label>
-              <Input
-                id="athlete"
-                value={formData.athlete}
-                onChange={(e) => updateField("athlete", e.target.value)}
-                placeholder="Enter athlete name"
-                required
-                data-testid="input-athlete"
-              />
+              <Popover
+                open={athleteOpen}
+                onOpenChange={(open) => {
+                  setAthleteOpen(open);
+                  if (open) {
+                    setAthleteSearch(formData.athlete);
+                  } else if (athleteSearch && athleteSearch !== formData.athlete) {
+                    // If user typed something but didn't select, use the typed value
+                    updateField("athlete", athleteSearch);
+                  }
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    id="athlete"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={athleteOpen}
+                    className="w-full justify-between font-normal"
+                    data-testid="input-athlete"
+                  >
+                    {formData.athlete || "Select or enter athlete name..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Search or type new name..."
+                      value={athleteSearch}
+                      onValueChange={setAthleteSearch}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && athleteSearch) {
+                          updateField("athlete", athleteSearch);
+                          setAthleteOpen(false);
+                        }
+                      }}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {athleteSearch ? `Press Enter to use "${athleteSearch}"` : "No athletes found"}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {athleteNames
+                          .filter((name) =>
+                            name.toLowerCase().includes(athleteSearch.toLowerCase())
+                          )
+                          .map((name) => (
+                            <CommandItem
+                              key={name}
+                              value={name}
+                              onSelect={() => {
+                                updateField("athlete", name);
+                                setAthleteSearch(name);
+                                setAthleteOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.athlete === name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {name}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="event">Event Name</Label>
-              <Input
-                id="event"
-                value={formData.event}
-                onChange={(e) => updateField("event", e.target.value)}
-                placeholder="e.g., Meet XYZ 2025 or practice"
-                required
-                data-testid="input-event"
-              />
+              <Popover
+                open={eventOpen}
+                onOpenChange={(open) => {
+                  setEventOpen(open);
+                  if (open) {
+                    setEventSearch(formData.event);
+                  } else if (eventSearch && eventSearch !== formData.event) {
+                    // If user typed something but didn't select, use the typed value
+                    updateField("event", eventSearch);
+                  }
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    id="event"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={eventOpen}
+                    className="w-full justify-between font-normal"
+                    data-testid="input-event"
+                  >
+                    {formData.event || "Select or enter event name..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Search or type new event..."
+                      value={eventSearch}
+                      onValueChange={setEventSearch}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && eventSearch) {
+                          updateField("event", eventSearch);
+                          setEventOpen(false);
+                        }
+                      }}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {eventSearch ? `Press Enter to use "${eventSearch}"` : "No events found"}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {eventNames
+                          .filter((name) =>
+                            name.toLowerCase().includes(eventSearch.toLowerCase())
+                          )
+                          .map((name) => (
+                            <CommandItem
+                              key={name}
+                              value={name}
+                              onSelect={() => {
+                                updateField("event", name);
+                                setEventSearch(name);
+                                setEventOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.event === name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {name}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
