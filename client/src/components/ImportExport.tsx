@@ -1,20 +1,16 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Download, Upload, AlertCircle, CheckCircle2 } from "lucide-react";
-import { swimStorage } from "@/lib/storage";
+import { Download, Upload, AlertCircle, CheckCircle2, UserCog } from "lucide-react";
+import { swimStorage, ImportResult } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Link } from "wouter";
 
 export function ImportExport() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importResult, setImportResult] = useState<{
-    imported: number;
-    updated: number;
-    skipped: number;
-    errors: string[];
-  } | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const handleExport = () => {
     try {
@@ -58,13 +54,23 @@ export function ImportExport() {
       if (result.imported > 0 || result.updated > 0) {
         window.dispatchEvent(new Event('storage-updated'));
         const parts = [];
-        if (result.imported > 0) parts.push(`${result.imported} imported`);
+        if (result.imported > 0) parts.push(`${result.imported} times imported`);
         if (result.updated > 0) parts.push(`${result.updated} updated`);
+        if (result.athletesImported > 0) parts.push(`${result.athletesImported} new athletes`);
         if (result.skipped > 0) parts.push(`${result.skipped} skipped`);
 
+        let description = parts.join(", ") + ".";
+        if (result.conflicts.length > 0) {
+          description += ` ${result.conflicts.length} conflict(s) detected.`;
+        }
+        if (result.duplicateSuggestions.length > 0) {
+          description += ` ${result.duplicateSuggestions.length} potential duplicate(s) found.`;
+        }
+
         toast({
-          title: "Import successful",
-          description: parts.join(", ") + ".",
+          title: result.conflicts.length > 0 ? "Import completed with conflicts" : "Import successful",
+          description,
+          variant: result.conflicts.length > 0 ? "destructive" : "default",
         });
       } else if (result.errors.length > 0) {
         toast({
@@ -157,8 +163,8 @@ export function ImportExport() {
       </div>
 
       {importResult && (
-        <Alert variant={importResult.errors.length > 0 ? "destructive" : "default"}>
-          {importResult.errors.length > 0 ? (
+        <Alert variant={importResult.errors.length > 0 || importResult.conflicts.length > 0 ? "destructive" : "default"}>
+          {importResult.errors.length > 0 || importResult.conflicts.length > 0 ? (
             <AlertCircle className="h-4 w-4" />
           ) : (
             <CheckCircle2 className="h-4 w-4" />
@@ -170,12 +176,50 @@ export function ImportExport() {
                 <li>{importResult.imported} swim times imported</li>
                 <li>{importResult.updated} swim times updated (newer version)</li>
                 <li>{importResult.skipped} skipped (older or duplicate)</li>
+                {importResult.athletesImported > 0 && (
+                  <li>{importResult.athletesImported} new athletes added</li>
+                )}
+                {importResult.conflicts.length > 0 && (
+                  <li className="text-destructive">
+                    {importResult.conflicts.length} alias conflict(s) detected
+                  </li>
+                )}
+                {importResult.duplicateSuggestions.length > 0 && (
+                  <li className="text-yellow-600 dark:text-yellow-500">
+                    {importResult.duplicateSuggestions.length} potential duplicate(s) found
+                  </li>
+                )}
                 {importResult.errors.length > 0 && (
                   <li className="text-destructive">
                     {importResult.errors.length} errors occurred
                   </li>
                 )}
               </ul>
+
+              {importResult.conflicts.length > 0 && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-sm">View alias conflicts</summary>
+                  <ul className="mt-2 text-xs space-y-1">
+                    {importResult.conflicts.map((conflict, i) => (
+                      <li key={i} className="text-muted-foreground">
+                        Alias "{conflict.alias}" conflicts: local="{conflict.localCanonical}" vs imported="{conflict.importedCanonical}"
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {(importResult.duplicateSuggestions.length > 0 || importResult.conflicts.length > 0) && (
+                <div className="mt-3">
+                  <Link href="/manage-athletes">
+                    <Button size="sm" variant="outline">
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Manage Athletes to Resolve
+                    </Button>
+                  </Link>
+                </div>
+              )}
+
               {importResult.errors.length > 0 && (
                 <details className="mt-2">
                   <summary className="cursor-pointer text-sm">View errors</summary>

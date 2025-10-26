@@ -15,6 +15,7 @@ export default function AthleteProfile() {
   const { toast } = useToast();
   const [athleteTimes, setAthleteTimes] = useState<SwimTimeType[]>([]);
   const [personalBests, setPersonalBests] = useState<SwimTimeType[]>([]);
+  const [aliases, setAliases] = useState<string[]>([]);
 
   useEffect(() => {
     if (athleteName) {
@@ -23,30 +24,12 @@ export default function AthleteProfile() {
   }, [athleteName]);
 
   const loadData = () => {
-    setAthleteTimes(swimStorage.getSwimTimesByAthlete(athleteName));
-    setPersonalBests(swimStorage.getPersonalBestsForAthlete(athleteName));
-  };
+    const resolvedName = swimStorage.resolveAthleteName(athleteName);
+    setAthleteTimes(swimStorage.getSwimTimesByAthlete(resolvedName));
+    setPersonalBests(swimStorage.getPersonalBestsForAthlete(resolvedName));
 
-  const handleEdit = (id: string, updatedTime: SwimTime) => {
-    const result = swimStorage.updateSwimTime(id, {
-      athleteName: updatedTime.athlete,
-      eventName: updatedTime.event,
-      date: updatedTime.date,
-      measuredTime: updatedTime.time,
-      stroke: updatedTime.stroke as any,
-      distance: updatedTime.distance,
-      poolLength: updatedTime.poolLength as any,
-      splits: updatedTime.splits || null,
-    });
-
-    if (result) {
-      loadData();
-      window.dispatchEvent(new Event('storage-updated'));
-      toast({
-        title: "Time updated",
-        description: "The swim time has been updated successfully.",
-      });
-    }
+    const athlete = swimStorage.getAthlete(resolvedName);
+    setAliases(athlete?.aliases || []);
   };
 
   const handleDelete = (id: string) => {
@@ -87,6 +70,18 @@ export default function AthleteProfile() {
         <h1 className="text-3xl font-bold mb-2" data-testid="text-athlete-name">
           {athleteName}
         </h1>
+        {aliases.length > 0 && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm text-muted-foreground">Also known as:</span>
+            <div className="flex flex-wrap gap-1">
+              {aliases.map((alias) => (
+                <Badge key={alias} variant="secondary" className="text-xs">
+                  {alias}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
         <p className="text-muted-foreground">Athlete Performance Profile</p>
       </div>
 
@@ -169,7 +164,6 @@ export default function AthleteProfile() {
         ) : (
           <TimeEntryTable
             times={mappedTimes}
-            onEdit={handleEdit}
             onDelete={handleDelete}
           />
         )}

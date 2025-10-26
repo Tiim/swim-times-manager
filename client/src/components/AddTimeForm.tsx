@@ -29,10 +29,21 @@ import { swimStorage } from "@/lib/storage";
 
 interface AddTimeFormProps {
   onSubmit?: (data: any) => void;
+  initialData?: {
+    date: string;
+    athlete: string;
+    event: string;
+    stroke: string;
+    distance: string;
+    poolLength: string;
+    time: string;
+    splits: string;
+  };
+  isEditing?: boolean;
 }
 
-export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
-  const [formData, setFormData] = useState({
+export function AddTimeForm({ onSubmit, initialData, isEditing = false }: AddTimeFormProps) {
+  const [formData, setFormData] = useState(initialData || {
     date: new Date().toISOString().split("T")[0],
     athlete: "",
     event: "practice",
@@ -63,13 +74,16 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
     e.preventDefault();
     console.log("Form submitted:", formData);
     onSubmit?.(formData);
-    // Only reset distance, stroke, and time - keep athlete, event, date, poolLength, and splits
-    setFormData((prev) => ({
-      ...prev,
-      stroke: "",
-      distance: "",
-      time: "",
-    }));
+    // Only reset fields when adding (not editing)
+    if (!isEditing) {
+      // Only reset distance, stroke, and time - keep athlete, event, date, poolLength, and splits
+      setFormData((prev) => ({
+        ...prev,
+        stroke: "",
+        distance: "",
+        time: "",
+      }));
+    }
   };
 
   const updateField = (field: string, value: string) => {
@@ -154,7 +168,7 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add New Time</CardTitle>
+        <CardTitle>{isEditing ? "Edit Time" : "Add New Time"}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -415,7 +429,7 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
           </div>
 
           <Button type="submit" className="w-full" data-testid="button-submit">
-            Add Time
+            {isEditing ? "Update Time" : "Add Time"}
           </Button>
         </form>
       </CardContent>

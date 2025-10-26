@@ -1,4 +1,4 @@
-import { Home, Users, Clock, Plus, Download } from "lucide-react";
+import { Home, Users, Clock, Plus, Download, UserCog } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,11 @@ const items = [
     title: "Athletes",
     url: "/athletes",
     icon: Users,
+  },
+  {
+    title: "Manage Athletes",
+    url: "/manage-athletes",
+    icon: UserCog,
   },
   {
     title: "All Times",

@@ -40,34 +40,6 @@ export default function AllTimes() {
     setTimes(mapped);
   };
 
-  const handleEdit = (id: string, updatedTime: SwimTime) => {
-    const result = swimStorage.updateSwimTime(id, {
-      athleteName: updatedTime.athlete,
-      eventName: updatedTime.event,
-      date: updatedTime.date,
-      measuredTime: updatedTime.time,
-      stroke: updatedTime.stroke as any,
-      distance: updatedTime.distance,
-      poolLength: updatedTime.poolLength as any,
-      splits: updatedTime.splits || null,
-    });
-
-    if (result) {
-      loadData();
-      window.dispatchEvent(new Event('storage-updated'));
-      toast({
-        title: "Time updated",
-        description: "The swim time has been updated successfully.",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to update swim time.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleDelete = (id: string) => {
     const deleted = swimStorage.deleteSwimTime(id);
     if (deleted) {
@@ -171,7 +143,6 @@ export default function AllTimes() {
         <>
           <TimeEntryTable
             times={filteredTimes}
-            onEdit={handleEdit}
             onDelete={handleDelete}
           />
 

@@ -11,6 +11,7 @@ import AllTimes from "@/pages/AllTimes";
 import AddTime from "@/pages/AddTime";
 import AthleteProfile from "@/pages/AthleteProfile";
 import ImportExport from "@/pages/ImportExport";
+import ManageAthletes from "@/pages/ManageAthletes";
 import NotFound from "@/pages/not-found";
 
 function Routes() {
@@ -18,8 +19,10 @@ function Routes() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/athletes" component={Athletes} />
+      <Route path="/manage-athletes" component={ManageAthletes} />
       <Route path="/all-times" component={AllTimes} />
       <Route path="/add-time" component={AddTime} />
+      <Route path="/edit-time/:id" component={AddTime} />
       <Route path="/import-export" component={ImportExport} />
       <Route path="/athlete/:id" component={AthleteProfile} />
       <Route component={NotFound} />

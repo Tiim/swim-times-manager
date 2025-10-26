@@ -6,7 +6,7 @@ A client-side React application for swim coaches to track athlete performance an
 
 - 📊 **Personal Bests Dashboard** - Automatic calculation and display of personal bests
 - 👥 **Athlete Management** - Track multiple athletes with individual performance profiles
-- ⏱️ **Time Entry** - Spreadsheet-like interface for quick data entry
+- ⏱️ **Time Entry & Editing** - Form-based interface for adding and editing swim times
 - 🔍 **Advanced Filtering** - Search and filter by athlete, stroke, pool type, and more
 - 📥 **Import/Export** - Backup and restore data via JSON export/import
 - 💾 **Local Storage** - All data stored locally in browser (no server required)
@@ -85,7 +85,7 @@ SwimTimesManager/
 │   │   │   ├── Dashboard.tsx
 │   │   │   ├── Athletes.tsx
 │   │   │   ├── AllTimes.tsx
-│   │   │   ├── AddTime.tsx
+│   │   │   ├── AddTime.tsx      # Handles both /add-time and /edit-time/:id
 │   │   │   ├── AthleteProfile.tsx
 │   │   │   └── ImportExport.tsx
 │   │   ├── lib/
@@ -262,7 +262,7 @@ window.dispatchEvent(new Event('storage-updated'));
 - **Data density over decoration** - Inspired by Linear, Notion, and Airtable
 - **Dark mode first** - With light mode support
 - **Monospace fonts** - For all time displays (tabular-nums)
-- **Spreadsheet-like interactions** - Inline editing, keyboard navigation
+- **Form-based editing** - Edit times via dedicated form page for better data input
 - **No decorative imagery** - Icon-based navigation only
 
 ## License

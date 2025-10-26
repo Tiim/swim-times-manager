@@ -65,8 +65,11 @@ npm run check        # TypeScript type checking only (no build)
 
 ### Component Organization
 - **Pages**: `client/src/pages/` - Route components (Dashboard, Athletes, AllTimes, AddTime, AthleteProfile, ImportExport)
+  - `AddTime.tsx` handles both adding new times (`/add-time`) and editing existing times (`/edit-time/:id`)
 - **UI Components**: `client/src/components/ui/` - Shadcn/ui primitives (never modify directly, regenerate via CLI)
 - **Feature Components**: `client/src/components/` - TimeEntryTable, AddTimeForm, PBCard, etc.
+  - `AddTimeForm.tsx` supports both add and edit modes via `isEditing` and `initialData` props
+  - `TimeEntryTable.tsx` displays times with edit/delete actions (edit navigates to form page)
 - **Examples**: `client/src/components/examples/` - Reference implementations
 
 ### Storage API Methods
@@ -91,7 +94,7 @@ The `swimStorage` instance provides these methods:
 **Key Requirements** (from `design_guidelines.md`):
 - **Dark mode first** with light mode support via CSS variables
 - **Monospace fonts** (JetBrains Mono) for all time/number displays with `tabular-nums`
-- **Spreadsheet-like interactions**: inline editing, keyboard navigation (Tab/Enter), autocomplete
+- **Form-based editing**: Edit times via dedicated form page (same as add time form)
 - **Dense layouts**: tight spacing, alternating row backgrounds, sticky headers
 - **No decorative imagery**: icon-based navigation only
 

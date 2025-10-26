@@ -29,7 +29,6 @@ export default function TimeEntryTableExample() {
     <div className="p-4">
       <TimeEntryTable
         times={sampleTimes}
-        onEdit={(id, time) => console.log("Edit:", id, time)}
         onDelete={(id) => console.log("Delete:", id)}
       />
     </div>
