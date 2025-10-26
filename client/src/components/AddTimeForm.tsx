@@ -73,7 +73,82 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
   };
 
   const updateField = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+
+      // Clear splits if distance or pool length changes and number of splits changes
+      if (field === "distance" || field === "poolLength") {
+        const oldPoolLength = getPoolLengthValue(prev.poolLength);
+        const oldDistance = parseInt(prev.distance) || 0;
+        const oldNumSplits = oldDistance > oldPoolLength && oldPoolLength > 0
+          ? Math.floor(oldDistance / oldPoolLength) - 1
+          : 0;
+
+        const newPoolLength = field === "poolLength"
+          ? getPoolLengthValue(value)
+          : getPoolLengthValue(prev.poolLength);
+        const newDistance = field === "distance" ? parseInt(value) || 0 : parseInt(prev.distance) || 0;
+        const newNumSplits = newDistance > newPoolLength && newPoolLength > 0
+          ? Math.floor(newDistance / newPoolLength) - 1
+          : 0;
+
+        if (oldNumSplits !== newNumSplits) {
+          newData.splits = "";
+        }
+      }
+
+      return newData;
+    });
+  };
+
+  const updateSplit = (index: number, value: string) => {
+    const splitsArray = formData.splits ? formData.splits.split(",").map(s => s.trim()) : [];
+    splitsArray[index] = value;
+    setFormData((prev) => ({ ...prev, splits: splitsArray.join(", ") }));
+  };
+
+  // Calculate pool length in meters/yards
+  const getPoolLengthValue = (poolLength: string): number => {
+    switch (poolLength) {
+      case "SCM": return 25;
+      case "LCM": return 50;
+      case "SCY": return 25;
+      case "LCY": return 50;
+      default: return 0;
+    }
+  };
+
+  // Calculate number of splits needed
+  const getNumberOfSplits = (): number => {
+    const distance = parseInt(formData.distance);
+    const poolLength = getPoolLengthValue(formData.poolLength);
+
+    if (!distance || !poolLength || distance <= poolLength) {
+      return 0;
+    }
+
+    return Math.floor(distance / poolLength) - 1;
+  };
+
+  // Get split distances
+  const getSplitDistances = (): number[] => {
+    const poolLength = getPoolLengthValue(formData.poolLength);
+    const numSplits = getNumberOfSplits();
+
+    return Array.from({ length: numSplits }, (_, i) => poolLength * (i + 1));
+  };
+
+  // Get split values as array
+  const getSplitValues = (): string[] => {
+    const splitsArray = formData.splits ? formData.splits.split(",").map(s => s.trim()) : [];
+    const numSplits = getNumberOfSplits();
+
+    // Ensure array has correct length
+    while (splitsArray.length < numSplits) {
+      splitsArray.push("");
+    }
+
+    return splitsArray.slice(0, numSplits);
   };
 
   return (
@@ -311,17 +386,32 @@ export function AddTimeForm({ onSubmit }: AddTimeFormProps) {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="splits">Splits (Optional)</Label>
-              <Input
-                id="splits"
-                value={formData.splits}
-                onChange={(e) => updateField("splits", e.target.value)}
-                placeholder="e.g., 28.5, 29.2, 30.1"
-                className="font-mono"
-                data-testid="input-splits"
-              />
-            </div>
+            {getNumberOfSplits() > 0 && (
+              <div className="space-y-2">
+                <Label>Splits (Optional)</Label>
+                <div className="space-y-3">
+                  {getSplitDistances().map((distance, index) => {
+                    const splitValues = getSplitValues();
+                    const unit = formData.poolLength.includes("M") ? "m" : "yd";
+                    return (
+                      <div key={index} className="flex items-center gap-2">
+                        <Label htmlFor={`split-${index}`} className="w-16 text-sm text-muted-foreground">
+                          {distance}{unit}
+                        </Label>
+                        <Input
+                          id={`split-${index}`}
+                          value={splitValues[index] || ""}
+                          onChange={(e) => updateSplit(index, e.target.value)}
+                          placeholder="MM:SS.ss or SS.ss"
+                          className="font-mono"
+                          data-testid={`input-split-${index}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <Button type="submit" className="w-full" data-testid="button-submit">
