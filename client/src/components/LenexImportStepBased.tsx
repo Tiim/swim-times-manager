@@ -394,9 +394,32 @@ export function LenexImport() {
 
             let splitsStr: string | null = null;
             if (result.splits && result.splits.length > 0) {
-              splitsStr = result.splits
-                .map(split => split.swimtime ? formatSwimTime(split.swimtime) : "")
-                .join(", ");
+              // Calculate pool length in meters
+              const poolLengthMeters = poolLength.includes("Y")
+                ? (poolLength === "LCY" ? 50 : poolLength === "SCY" ? 25 : 0)
+                : (poolLength === "LCM" ? 50 : poolLength === "SCM" ? 25 : 0);
+
+              if (poolLengthMeters > 0) {
+                // Calculate number of split positions needed
+                const numSplits = Math.floor(swimstyle.distance / poolLengthMeters);
+
+                // Create array with correct number of positions, all empty
+                const splitsArray: string[] = new Array(numSplits).fill("");
+
+                // Place each split at the correct position based on its distance
+                for (const split of result.splits) {
+                  if (split.swimtime && split.distance) {
+                    // Calculate the index: (distance / poolLength) - 1
+                    // e.g., 50m split in 25m pool: (50 / 25) - 1 = 1 (index 1)
+                    const splitIndex = Math.floor(split.distance / poolLengthMeters) - 1;
+                    if (splitIndex >= 0 && splitIndex < numSplits) {
+                      splitsArray[splitIndex] = formatSwimTime(split.swimtime);
+                    }
+                  }
+                }
+
+                splitsStr = splitsArray.join(", ");
+              }
             }
 
             swimStorage.createSwimTime({
