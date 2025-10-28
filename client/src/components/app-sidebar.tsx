@@ -1,4 +1,4 @@
-import { Home, Users, Clock, Plus, Download, UserCog, FileUp } from "lucide-react";
+import { Home, Users, Clock, Plus, Download, UserCog, FileUp, Sparkles } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -42,6 +42,11 @@ const items = [
     title: "Import/Export",
     url: "/import-export",
     icon: Download,
+  },
+  {
+    title: "Import from AI",
+    url: "/import-json",
+    icon: Sparkles,
   },
   {
     title: "Import LENEX",

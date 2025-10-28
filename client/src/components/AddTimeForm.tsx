@@ -40,9 +40,11 @@ interface AddTimeFormProps {
     splits: string;
   };
   isEditing?: boolean;
+  submitButtonText?: string;
+  hideSubmitButton?: boolean;
 }
 
-export function AddTimeForm({ onSubmit, initialData, isEditing = false }: AddTimeFormProps) {
+export function AddTimeForm({ onSubmit, initialData, isEditing = false, submitButtonText, hideSubmitButton = false }: AddTimeFormProps) {
   const [formData, setFormData] = useState(initialData || {
     date: new Date().toISOString().split("T")[0],
     athlete: "",
@@ -428,9 +430,11 @@ export function AddTimeForm({ onSubmit, initialData, isEditing = false }: AddTim
             )}
           </div>
 
-          <Button type="submit" className="w-full" data-testid="button-submit">
-            {isEditing ? "Update Time" : "Add Time"}
-          </Button>
+          {!hideSubmitButton && (
+            <Button type="submit" className="w-full" data-testid="button-submit">
+              {submitButtonText || (isEditing ? "Update Time" : "Add Time")}
+            </Button>
+          )}
         </form>
       </CardContent>
     </Card>

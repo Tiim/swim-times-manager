@@ -11,6 +11,7 @@ import AllTimes from "@/pages/AllTimes";
 import AddTime from "@/pages/AddTime";
 import AthleteProfile from "@/pages/AthleteProfile";
 import ImportExport from "@/pages/ImportExport";
+import ImportJSON from "@/pages/ImportJSON";
 import LenexImport from "@/pages/LenexImport";
 import ManageAthletes from "@/pages/ManageAthletes";
 import NotFound from "@/pages/not-found";
@@ -25,6 +26,7 @@ function Routes() {
       <Route path="/add-time" component={AddTime} />
       <Route path="/edit-time/:id" component={AddTime} />
       <Route path="/import-export" component={ImportExport} />
+      <Route path="/import-json" component={ImportJSON} />
       <Route path="/lenex-import" component={LenexImport} />
       <Route path="/athlete/:id" component={AthleteProfile} />
       <Route component={NotFound} />
