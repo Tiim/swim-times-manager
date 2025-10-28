@@ -1,6 +1,14 @@
+/**
+ * Swim time entry record
+ */
 export interface SwimTime {
   id: string;
   athleteName: string;
+  /**
+   * Name of the meet, practice session, or calendar event where this time was recorded.
+   * This is NOT a swimming event (e.g., "100m Freestyle"), but rather the occasion/meet name.
+   * Examples: "Training Trip 2025", "Regionals 2025", "practice"
+   */
   eventName: string;
   date: string;
   measuredTime: string;
