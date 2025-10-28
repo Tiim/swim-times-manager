@@ -57,13 +57,43 @@ export default function Athletes() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAthletes.map((athlete) => {
-            const bestPB = athlete.personalBests[0];
+            // Calculate metrics
             const recentPBs = athlete.personalBests.filter((pb: any) => {
               const pbDate = new Date(pb.date);
               const thirtyDaysAgo = new Date();
               thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
               return pbDate >= thirtyDaysAgo;
             }).length;
+
+            // Get last swim date
+            const lastSwim = athlete.recentTimes[0];
+            const lastSwimDate = lastSwim ? new Date(lastSwim.date) : null;
+            const daysSinceLastSwim = lastSwimDate
+              ? Math.floor((new Date().getTime() - lastSwimDate.getTime()) / (1000 * 60 * 60 * 24))
+              : null;
+
+            // Calculate recent activity (last 30 days)
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const recentSwims = athlete.recentTimes.filter((time: any) => {
+              return new Date(time.date) >= thirtyDaysAgo;
+            }).length;
+
+            // Calculate event variety
+            const uniqueStrokes = new Set(athlete.personalBests.map((pb: any) => pb.stroke));
+            const uniqueDistances = new Set(athlete.personalBests.map((pb: any) => pb.distance));
+
+            // Activity status color
+            const activityColor = daysSinceLastSwim === null ? "text-muted-foreground" :
+              daysSinceLastSwim < 7 ? "text-green-600 dark:text-green-400" :
+              daysSinceLastSwim < 30 ? "text-yellow-600 dark:text-yellow-400" :
+              "text-red-600 dark:text-red-400";
+
+            // Format last swim text
+            const lastSwimText = daysSinceLastSwim === null ? "No swims yet" :
+              daysSinceLastSwim === 0 ? "Today" :
+              daysSinceLastSwim === 1 ? "Yesterday" :
+              `${daysSinceLastSwim} days ago`;
 
             return (
               <Card
@@ -75,7 +105,7 @@ export default function Athletes() {
                   <div className="flex-1">
                     <CardTitle className="text-lg">{athlete.name}</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {athlete.totalTimes} recorded times
+                      {recentSwims} {recentSwims === 1 ? 'swim' : 'swims'} in last 30 days
                     </p>
                   </div>
                   {recentPBs > 0 && (
@@ -86,28 +116,29 @@ export default function Athletes() {
                   )}
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {bestPB ? (
-                    <>
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                          Best Stroke
-                        </p>
-                        <p className="font-medium">{bestPB.stroke}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                          Top Time
-                        </p>
-                        <p className="font-mono font-semibold text-lg">
-                          {bestPB.measuredTime}
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      No personal bests yet
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                      Last Swim
+                    </p>
+                    <p className={`font-medium ${activityColor}`}>
+                      {lastSwimText}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                      Performance
+                    </p>
+                    <p className="font-medium">
+                      {athlete.personalBests.length} PB{athlete.personalBests.length !== 1 ? "s" : ""} across {uniqueStrokes.size} {uniqueStrokes.size === 1 ? 'stroke' : 'strokes'}
+                    </p>
+                    {uniqueDistances.size > 0 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {uniqueDistances.size} {uniqueDistances.size === 1 ? 'distance' : 'distances'}
+                      </p>
+                    )}
+                  </div>
+
                   <Link href={`/athlete/${encodeURIComponent(athlete.name)}`}>
                     <Button variant="outline" className="w-full" data-testid={`button-view-${athlete.name}`}>
                       View Profile

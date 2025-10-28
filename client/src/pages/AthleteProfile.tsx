@@ -1,4 +1,4 @@
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TimeEntryTable, SwimTime } from "@/components/TimeEntryTable";
 import { PBCard } from "@/components/PBCard";
@@ -11,6 +11,7 @@ import type { SwimTime as SwimTimeType } from "@/lib/storage";
 
 export default function AthleteProfile() {
   const [match, params] = useRoute("/athlete/:name");
+  const [, setLocation] = useLocation();
   const athleteName = params?.name ? decodeURIComponent(params.name) : "";
   const { toast } = useToast();
   const [athleteTimes, setAthleteTimes] = useState<SwimTimeType[]>([]);
@@ -146,6 +147,11 @@ export default function AthleteProfile() {
                 time={pb.measuredTime}
                 event={pb.eventName}
                 date={pb.date}
+                onClick={() =>
+                  setLocation(
+                    `/athlete/${encodeURIComponent(athleteName)}/progression/${encodeURIComponent(pb.stroke)}/${pb.distance}`
+                  )
+                }
               />
             ))}
           </div>

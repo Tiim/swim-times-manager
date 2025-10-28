@@ -1,4 +1,4 @@
-import { Home, Users, Clock, Plus, Download, UserCog, FileUp, Sparkles } from "lucide-react";
+import { Users, Clock, Plus, Download, UserCog, FileUp, Sparkles } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,13 +14,8 @@ import { Link, useLocation } from "wouter";
 
 const items = [
   {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  },
-  {
     title: "Athletes",
-    url: "/athletes",
+    url: "/",
     icon: Users,
   },
   {

@@ -10,6 +10,7 @@ interface PBCardProps {
   event: string;
   date: string;
   isNew?: boolean;
+  onClick?: () => void;
 }
 
 export function PBCard({
@@ -20,9 +21,14 @@ export function PBCard({
   event,
   date,
   isNew,
+  onClick,
 }: PBCardProps) {
   return (
-    <Card className="hover-elevate" data-testid={`card-pb-${stroke}-${distance}`}>
+    <Card
+      className={`hover-elevate ${onClick ? 'cursor-pointer' : ''}`}
+      data-testid={`card-pb-${stroke}-${distance}`}
+      onClick={onClick}
+    >
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3">
         <div>
           <h3 className="font-semibold text-base">{stroke}</h3>

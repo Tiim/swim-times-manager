@@ -5,11 +5,11 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import Dashboard from "@/pages/Dashboard";
 import Athletes from "@/pages/Athletes";
 import AllTimes from "@/pages/AllTimes";
 import AddTime from "@/pages/AddTime";
 import AthleteProfile from "@/pages/AthleteProfile";
+import TimeProgression from "@/pages/TimeProgression";
 import ImportExport from "@/pages/ImportExport";
 import ImportJSON from "@/pages/ImportJSON";
 import LenexImport from "@/pages/LenexImport";
@@ -19,8 +19,7 @@ import NotFound from "@/pages/not-found";
 function Routes() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/athletes" component={Athletes} />
+      <Route path="/" component={Athletes} />
       <Route path="/manage-athletes" component={ManageAthletes} />
       <Route path="/all-times" component={AllTimes} />
       <Route path="/add-time" component={AddTime} />
@@ -28,6 +27,7 @@ function Routes() {
       <Route path="/import-export" component={ImportExport} />
       <Route path="/import-json" component={ImportJSON} />
       <Route path="/lenex-import" component={LenexImport} />
+      <Route path="/athlete/:name/progression/:stroke/:distance" component={TimeProgression} />
       <Route path="/athlete/:id" component={AthleteProfile} />
       <Route component={NotFound} />
     </Switch>
