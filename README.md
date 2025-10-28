@@ -204,7 +204,7 @@ const times = swimStorage.getAllSwimTimes();
 // Create new time
 const newTime = swimStorage.createSwimTime({
   athleteName: "John Doe",
-  eventName: "100m Freestyle",
+  eventName: "Regionals 2025",  // Meet/practice name, not "100m Freestyle"
   date: "2025-10-25",
   measuredTime: "52.34",
   stroke: "Freestyle",
@@ -240,7 +240,9 @@ window.dispatchEvent(new Event('storage-updated'));
 {
   id: string;                   // UUID
   athleteName: string;
-  eventName: string;
+  eventName: string;            // Name of the meet/practice where this time was recorded
+                                // Examples: "Training Trip 2025", "Regionals 2025", "practice"
+                                // NOT a swimming event like "100m Freestyle"
   date: string;                 // ISO date format (YYYY-MM-DD)
   measuredTime: string;         // MM:SS.ss or SS.ss
   stroke: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "IM";

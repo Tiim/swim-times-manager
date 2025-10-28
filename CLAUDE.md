@@ -120,7 +120,9 @@ The `swimStorage` instance provides these methods:
 {
   id: string (UUID)
   athleteName: string
-  eventName: string
+  eventName: string // Name of the meet/practice where this time was recorded
+                    // Examples: "Training Trip 2025", "Regionals 2025", "practice"
+                    // NOT a swimming event like "100m Freestyle"
   date: string (ISO date format)
   measuredTime: string (MM:SS.ss or SS.ss)
   stroke: "Freestyle" | "Backstroke" | "Breaststroke" | "Butterfly" | "IM"

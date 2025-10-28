@@ -64,7 +64,7 @@
 - Auto-save indicator in bottom right
 
 **Table Columns** (left to right):
-Date | Athlete | Event | Stroke | Distance | Pool | Time | Splits | Actions
+Date | Athlete | Event (meet/practice name) | Stroke | Distance | Pool | Time | Splits | Actions
 
 **Forms**
 - Clean, single-column layout for mobile, two-column for desktop
