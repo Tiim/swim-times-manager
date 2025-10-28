@@ -1,8 +1,9 @@
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TimeEntryTable, SwimTime } from "@/components/TimeEntryTable";
 import { PBCard } from "@/components/PBCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { TrendingUp, Calendar, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -17,6 +18,7 @@ export default function AthleteProfile() {
   const [athleteTimes, setAthleteTimes] = useState<SwimTimeType[]>([]);
   const [personalBests, setPersonalBests] = useState<SwimTimeType[]>([]);
   const [aliases, setAliases] = useState<string[]>([]);
+  const [events, setEvents] = useState<{ name: string; timesCount: number; date: string }[]>([]);
 
   useEffect(() => {
     if (athleteName) {
@@ -28,6 +30,7 @@ export default function AthleteProfile() {
     const resolvedName = swimStorage.resolveAthleteName(athleteName);
     setAthleteTimes(swimStorage.getSwimTimesByAthlete(resolvedName));
     setPersonalBests(swimStorage.getPersonalBestsForAthlete(resolvedName));
+    setEvents(swimStorage.getEventsByAthlete(resolvedName));
 
     const athlete = swimStorage.getAthlete(resolvedName);
     setAliases(athlete?.aliases || []);
@@ -154,6 +157,58 @@ export default function AthleteProfile() {
                 }
               />
             ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-xl font-semibold">Events</h2>
+          <Badge variant="secondary">{events.length}</Badge>
+        </div>
+        {events.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No events found for this athlete.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {events.map((event) => {
+              const formatDate = (dateStr: string) => {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                });
+              };
+
+              return (
+                <Card key={event.name} className="hover-elevate">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">{event.name}</CardTitle>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(event.date)}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Entries
+                      </p>
+                      <p className="font-medium">
+                        {event.timesCount} {event.timesCount === 1 ? 'time' : 'times'}
+                      </p>
+                    </div>
+                    <Link href={`/event/${encodeURIComponent(event.name)}`}>
+                      <Button variant="outline" className="w-full" size="sm">
+                        View Event
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

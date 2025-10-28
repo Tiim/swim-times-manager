@@ -1,4 +1,4 @@
-import { Users, Clock, Plus, Download, UserCog, FileUp, Sparkles } from "lucide-react";
+import { Users, Clock, Plus, Download, UserCog, FileUp, Sparkles, Calendar } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +27,11 @@ const items = [
     title: "All Times",
     url: "/all-times",
     icon: Clock,
+  },
+  {
+    title: "Events",
+    url: "/events",
+    icon: Calendar,
   },
   {
     title: "Add Time",

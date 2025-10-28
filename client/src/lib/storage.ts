@@ -801,6 +801,109 @@ class LocalSwimStorage {
     });
     window.dispatchEvent(new Event('storage-updated'));
   }
+
+  /**
+   * Get all unique event names with basic statistics
+   */
+  getEvents(): { name: string; timesCount: number; athletesCount: number; date: string }[] {
+    const data = this.getData();
+    const eventMap = new Map<string, { times: SwimTime[]; athletes: Set<string> }>();
+
+    // Group times by event name
+    data.swimTimes.forEach(time => {
+      if (!eventMap.has(time.eventName)) {
+        eventMap.set(time.eventName, {
+          times: [],
+          athletes: new Set()
+        });
+      }
+      const event = eventMap.get(time.eventName)!;
+      event.times.push(time);
+      event.athletes.add(time.athleteName);
+    });
+
+    // Convert to array with statistics
+    return Array.from(eventMap.entries()).map(([name, data]) => ({
+      name,
+      timesCount: data.times.length,
+      athletesCount: data.athletes.size,
+      // Use the most recent date from this event
+      date: data.times.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  /**
+   * Get all times for a specific event
+   */
+  getSwimTimesByEvent(eventName: string): SwimTime[] {
+    const data = this.getData();
+    return data.swimTimes
+      .filter(time => time.eventName === eventName)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  /**
+   * Get all unique athletes who participated in a specific event
+   */
+  getAthletesByEvent(eventName: string): string[] {
+    const times = this.getSwimTimesByEvent(eventName);
+    const athletes = new Set<string>();
+    times.forEach(time => athletes.add(time.athleteName));
+    return Array.from(athletes).sort();
+  }
+
+  /**
+   * Get all events that an athlete has participated in
+   */
+  getEventsByAthlete(athleteName: string): { name: string; timesCount: number; date: string }[] {
+    const resolvedName = this.resolveAthleteName(athleteName);
+    const times = this.getSwimTimesByAthlete(resolvedName);
+    const eventMap = new Map<string, SwimTime[]>();
+
+    times.forEach(time => {
+      if (!eventMap.has(time.eventName)) {
+        eventMap.set(time.eventName, []);
+      }
+      eventMap.get(time.eventName)!.push(time);
+    });
+
+    return Array.from(eventMap.entries()).map(([name, times]) => ({
+      name,
+      timesCount: times.length,
+      // Use the most recent date from this event for this athlete
+      date: times.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  /**
+   * Rename an event (updates all swim times with this event name)
+   * Can be used to merge events by renaming one event to match another's name
+   */
+  renameEvent(oldName: string, newName: string): boolean {
+    if (oldName === newName) {
+      return false;
+    }
+
+    const data = this.getData();
+    let updated = false;
+
+    data.swimTimes.forEach(time => {
+      if (time.eventName === oldName) {
+        time.eventName = newName;
+        time.last_modified = new Date().toISOString();
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      this.saveData(data);
+      window.dispatchEvent(new Event('storage-updated'));
+    }
+
+    return updated;
+  }
 }
 
 export const swimStorage = new LocalSwimStorage();

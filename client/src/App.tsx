@@ -14,6 +14,8 @@ import ImportExport from "@/pages/ImportExport";
 import ImportJSON from "@/pages/ImportJSON";
 import LenexImport from "@/pages/LenexImport";
 import ManageAthletes from "@/pages/ManageAthletes";
+import Events from "@/pages/Events";
+import EventDetail from "@/pages/EventDetail";
 import NotFound from "@/pages/not-found";
 
 function Routes() {
@@ -27,6 +29,8 @@ function Routes() {
       <Route path="/import-export" component={ImportExport} />
       <Route path="/import-json" component={ImportJSON} />
       <Route path="/lenex-import" component={LenexImport} />
+      <Route path="/events" component={Events} />
+      <Route path="/event/:name" component={EventDetail} />
       <Route path="/athlete/:name/progression/:stroke/:distance" component={TimeProgression} />
       <Route path="/athlete/:id" component={AthleteProfile} />
       <Route component={NotFound} />
