@@ -4,7 +4,9 @@
       "Bash(npm install:*)",
       "Bash(npm run check:*)",
       "Bash(npm run build:*)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:webapps.stackexchange.com)",
+      "WebFetch(domain:de.tenable.com)"
     ],
     "deny": [],
     "ask": []

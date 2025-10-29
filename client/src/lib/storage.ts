@@ -104,6 +104,24 @@ function timeToSeconds(timeStr: string): number {
   }
 }
 
+/**
+ * Generate a UUID with fallback for browsers that don't support crypto.randomUUID()
+ * (common on older mobile browsers or non-secure contexts)
+ */
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  // Fallback implementation for browsers without crypto.randomUUID
+  // This generates a RFC4122 version 4 compliant UUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 class LocalSwimStorage {
   /**
    * Get stored data with automatic migration from v1 to v2
@@ -142,7 +160,7 @@ class LocalSwimStorage {
         });
 
         const athletes = Array.from(athleteNames).map(name => ({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           canonicalName: name,
           aliases: [],
           createdAt: new Date().toISOString(),
@@ -180,7 +198,7 @@ class LocalSwimStorage {
         });
 
         const athletes = Array.from(athleteNames).map(name => ({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           canonicalName: name,
           aliases: [],
           createdAt: new Date().toISOString(),
@@ -248,7 +266,7 @@ class LocalSwimStorage {
 
     if (!exists) {
       const newAthlete: Athlete = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         canonicalName: name,
         aliases: [],
         createdAt: new Date().toISOString(),
@@ -410,7 +428,7 @@ class LocalSwimStorage {
 
     // Create new athlete record for the former alias
     const newAthlete: Athlete = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       canonicalName: alias,
       aliases: [],
       createdAt: new Date().toISOString(),
@@ -542,7 +560,7 @@ class LocalSwimStorage {
     const newTime: SwimTime = {
       ...swimTime,
       athleteName: resolvedName,
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       splits: swimTime.splits || null,
       last_modified: new Date().toISOString(),
     };
@@ -708,7 +726,7 @@ class LocalSwimStorage {
           } else {
             data.athletes.push({
               ...importedAthlete,
-              id: crypto.randomUUID(),
+              id: generateUUID(),
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             });
@@ -769,7 +787,7 @@ class LocalSwimStorage {
         const newTime: SwimTime = {
           ...time,
           athleteName: resolvedName,
-          id: time.id || crypto.randomUUID(),
+          id: time.id || generateUUID(),
           splits: time.splits || null,
           last_modified: importedLastModified,
         };

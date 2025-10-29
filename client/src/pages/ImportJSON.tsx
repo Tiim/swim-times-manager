@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Copy, CheckCircle2, AlertCircle, Upload, Sparkles, ChevronLeft, ChevronRight, SkipForward, FileCheck } from "lucide-react";
+import { Copy, CheckCircle2, AlertCircle, Upload, Sparkles, ChevronLeft, ChevronRight, SkipForward, FileCheck, ExternalLink } from "lucide-react";
 import { AddTimeForm } from "@/components/AddTimeForm";
 
 const LLM_PROMPT = `Please convert the following swim times notes into JSON format. Each entry should have:
@@ -125,6 +125,7 @@ export default function ImportJSON() {
   const [showReview, setShowReview] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [chatGPTOpened, setChatGPTOpened] = useState(false);
   const [existingAthletes, setExistingAthletes] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [skippedIndices, setSkippedIndices] = useState<Set<number>>(new Set());
@@ -135,6 +136,19 @@ export default function ImportJSON() {
     await navigator.clipboard.writeText(LLM_PROMPT);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenChatGPT = async () => {
+    // Copy prompt to clipboard first
+    await navigator.clipboard.writeText(LLM_PROMPT);
+
+    // Open blank ChatGPT with temporary chat
+    const chatGPTUrl = `https://chatgpt.com/?temporary-chat=true`;
+    window.open(chatGPTUrl, '_blank', 'noopener,noreferrer');
+
+    // Show feedback that prompt was copied and ChatGPT opened
+    setChatGPTOpened(true);
+    setTimeout(() => setChatGPTOpened(false), 3000);
   };
 
   const validateEntry = (entry: any, index: number): { entry: ImportedEntry; errors: string[] } => {
@@ -384,26 +398,48 @@ export default function ImportJSON() {
                 <CardTitle>Step 1: Copy AI Prompt</CardTitle>
               </div>
               <CardDescription>
-                Copy this prompt and paste it into ChatGPT, Claude, or your preferred AI assistant along with your swim times notes
+                Copy the prompt and open ChatGPT in one click (prompt will be in your clipboard, ready to paste), or manually copy to use with Claude or another AI assistant
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-muted p-4 rounded-md font-mono text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
                 {LLM_PROMPT}
               </div>
-              <Button onClick={handleCopyPrompt} className="w-full sm:w-auto">
-                {copied ? (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copy Prompt
-                  </>
-                )}
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={handleOpenChatGPT} className="flex-1 sm:flex-initial">
+                  {chatGPTOpened ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Copied & Opened!
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Copy & Open ChatGPT
+                    </>
+                  )}
+                </Button>
+                <Button onClick={handleCopyPrompt} variant="outline" className="flex-1 sm:flex-initial">
+                  {copied ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Prompt
+                    </>
+                  )}
+                </Button>
+              </div>
+              {chatGPTOpened && (
+                <Alert>
+                  <AlertDescription>
+                    ChatGPT opened! Paste the prompt (Ctrl+V or Cmd+V), add your swim times notes, then send.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
 
