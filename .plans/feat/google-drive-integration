@@ -1,0 +1,469 @@
+# Google Drive Integration Plan
+
+## Overview
+Add automatic cloud sync functionality using Google Drive API to store and load swim times data. The app will maintain a single JSON file in the user's Google Drive that automatically syncs bidirectionally with the local storage.
+
+## Current State Analysis
+
+### Existing Import/Export Functionality
+- **Export**: `swimStorage.exportData()` creates JSON with:
+  - `version`: schema version (currently 2)
+  - `exportedAt`: ISO timestamp
+  - `athletes`: array of athlete records with aliases
+  - `time_entries`: array of swim time records
+
+- **Import**: `swimStorage.importData(jsonString)` handles:
+  - Merging athletes and swim times
+  - Conflict resolution using `last_modified` timestamps
+  - Duplicate detection with similarity matching
+  - Alias conflict detection
+  - Returns `ImportResult` with detailed status
+
+- **Conflict Resolution Strategy**:
+  - For same ID: keeps record with newer `last_modified` timestamp
+  - Alias conflicts are detected and reported
+  - Potential duplicates are suggested based on name similarity
+
+## Architecture Design
+
+### 1. Google Drive API Integration Layer
+
+**New file**: `client/src/lib/googleDrive.ts`
+
+#### Key Components:
+
+```typescript
+interface GoogleDriveConfig {
+  clientId: string;          // OAuth 2.0 client ID
+  apiKey: string;            // Google Drive API key
+  discoveryDocs: string[];   // API discovery documents
+  scopes: string[];          // Required permissions
+}
+
+interface SyncStatus {
+  status: 'idle' | 'syncing' | 'error' | 'authenticated' | 'unauthenticated';
+  lastSyncTime: string | null;
+  lastError: string | null;
+  conflictsDetected: number;
+  autoSyncEnabled: boolean;
+}
+
+class GoogleDriveSync {
+  // Authentication
+  async signIn(): Promise<void>
+  async signOut(): Promise<void>
+  isSignedIn(): boolean
+  getUserInfo(): { email: string; name: string } | null
+
+  // File operations
+  async findOrCreateFile(): Promise<string> // Returns file ID
+  async downloadFile(fileId: string): Promise<string> // Returns JSON content
+  async uploadFile(fileId: string, content: string): Promise<void>
+
+  // Sync operations
+  async syncToCloud(): Promise<void> // Upload local data to Drive
+  async syncFromCloud(): Promise<ImportResult> // Download and merge from Drive
+  async performBidirectionalSync(): Promise<ImportResult>
+
+  // Auto-sync management
+  enableAutoSync(): void
+  disableAutoSync(): void
+  getSyncStatus(): SyncStatus
+}
+```
+
+#### File Management Strategy:
+- **File name**: `swim-times-data.json` (consistent, easy to find)
+- **Location**: App data folder (hidden from user's main Drive view)
+- **File ID caching**: Store file ID in localStorage to avoid repeated searches
+- **Single file approach**: One canonical file per Google account
+
+### 2. OAuth 2.0 Authentication Flow
+
+**Implementation Details**:
+- Use Google Identity Services (GIS) library for OAuth 2.0
+- Required scope: `https://www.googleapis.com/auth/drive.appdata`
+  - Uses app data folder (isolated from user's main Drive)
+  - User doesn't see the file in their Drive UI
+  - More privacy-friendly
+
+**Auth Flow**:
+1. User clicks "Sign in with Google" button
+2. Google OAuth consent screen appears
+3. User grants permission to access app data
+4. App receives access token
+5. Token stored in memory (not localStorage for security)
+6. Refresh token handling for long-term access
+
+**Security Considerations**:
+- Client ID and API key stored in environment variables
+- Access tokens in memory only (cleared on page refresh)
+- Refresh token stored securely or require re-auth
+- Token expiration handling with automatic refresh
+
+### 3. Sync Strategy
+
+#### Auto-Sync Triggers:
+1. **On data change** (localStorage update):
+   - Debounced upload (wait 2 seconds after last change)
+   - Prevents excessive API calls during bulk operations
+
+2. **On app load** (if authenticated):
+   - Check cloud version on startup
+   - Perform bidirectional sync if needed
+
+3. **Periodic sync** (optional):
+   - Poll for changes every 5 minutes (if enabled)
+   - Useful for multi-device scenarios
+
+#### Bidirectional Sync Algorithm:
+```
+1. Download cloud file
+2. Parse cloud JSON
+3. Compare with local data using existing importData() logic
+4. Merge using last_modified timestamps (existing conflict resolution)
+5. If cloud data is newer or has new records:
+   - Import into local storage
+   - Show conflict/duplicate notifications
+6. If local data is newer or has new records:
+   - Upload merged data back to cloud
+7. Update lastSyncTime in sync status
+```
+
+#### Conflict Resolution:
+- **Leverage existing `importData()` logic**:
+  - Already handles timestamp-based conflict resolution
+  - Already detects alias conflicts
+  - Already suggests duplicate athletes
+- **UI notification**: Show import results after sync
+- **Manual resolution**: User can resolve via existing "Manage Athletes" page
+
+### 4. User Interface Changes
+
+#### New Component: `client/src/components/GoogleDriveSync.tsx`
+
+**UI Elements**:
+- **Sync Status Card** (on Dashboard or Import/Export page):
+  - Current sync status icon (✓ synced, ⟳ syncing, ⚠ error, ○ not connected)
+  - Last sync time (e.g., "Synced 2 minutes ago")
+  - User email (when signed in)
+  - "Sign in with Google" / "Sign out" button
+  - "Sync now" manual button
+  - Auto-sync toggle switch
+
+- **Sync Settings Card** (on Import/Export page):
+  - Enable/disable auto-sync
+  - Manual sync frequency options
+  - View sync history/logs
+  - Clear cloud data option (dangerous operation)
+
+#### Updated Import/Export Page:
+- Add Google Drive sync section above existing cards
+- Keep existing import/export as manual backup options
+- Show sync conflicts inline with existing conflict UI
+
+#### Dashboard Widget (optional):
+- Small sync status indicator in app header/sidebar
+- Click to see detailed sync status
+
+### 5. Error Handling & Edge Cases
+
+#### Network Failures:
+- **Offline detection**: Check `navigator.onLine`
+- **Retry strategy**: Exponential backoff (1s, 2s, 4s, 8s, max 3 retries)
+- **Queue failed syncs**: Store pending changes locally, retry when online
+- **User notification**: Toast notification for sync failures
+
+#### API Rate Limits:
+- **Debouncing**: Wait 2 seconds after last change before syncing
+- **Batch operations**: Don't sync on every single change
+- **Respect quotas**: Google Drive has 1000 requests/100 seconds/user
+
+#### Auth Token Expiration:
+- **Auto-refresh**: Use refresh token to get new access token
+- **Re-auth prompt**: If refresh fails, prompt user to sign in again
+- **Graceful degradation**: App works offline with local storage only
+
+#### File Conflicts:
+- **Simultaneous edits**: Use `last_modified` timestamps (existing logic)
+- **Multiple devices**: Bidirectional sync merges changes automatically
+- **Data loss prevention**: Never delete data, only merge
+
+#### App Data Folder Access:
+- **File not found**: Create new file on first sync
+- **Corrupted file**: Validate JSON before import, fallback to local data
+- **Permission revoked**: Detect 401/403 errors, prompt re-authentication
+
+### 6. Implementation Steps
+
+#### Phase 1: Google Drive API Setup (2-3 hours)
+1. Create Google Cloud project
+2. Enable Google Drive API
+3. Configure OAuth 2.0 consent screen
+4. Create OAuth 2.0 credentials (Web application)
+5. Add authorized JavaScript origins
+6. Store client ID and API key in environment variables
+
+**Files to create/modify**:
+- `.env.example` - Document required env vars
+- `.env` - Add actual credentials (git-ignored)
+- `vite.config.ts` - Ensure env vars are exposed to client
+
+#### Phase 2: Authentication Implementation (3-4 hours)
+1. Install Google Identity Services library
+2. Create `googleDriveAuth.ts` with OAuth flow
+3. Create auth UI component
+4. Add sign in/out buttons
+5. Store auth state in React context
+6. Handle token refresh
+
+**Files to create**:
+- `client/src/lib/googleDriveAuth.ts`
+- `client/src/contexts/GoogleAuthContext.tsx`
+- `client/src/components/GoogleSignInButton.tsx`
+
+#### Phase 3: File Operations (3-4 hours)
+1. Implement file search in app data folder
+2. Implement file creation
+3. Implement file download
+4. Implement file upload
+5. Add file ID caching
+6. Add error handling
+
+**Files to create**:
+- `client/src/lib/googleDriveFiles.ts`
+
+#### Phase 4: Sync Logic (4-5 hours)
+1. Create sync manager class
+2. Implement upload to cloud
+3. Implement download from cloud
+4. Implement bidirectional sync
+5. Add debouncing for auto-sync
+6. Wire up to storage events
+7. Add sync on app load
+
+**Files to create**:
+- `client/src/lib/googleDriveSync.ts`
+- `client/src/hooks/useGoogleDriveSync.ts`
+
+#### Phase 5: UI Integration (3-4 hours)
+1. Create sync status component
+2. Add to Import/Export page
+3. Add status indicator to header/sidebar
+4. Add sync settings UI
+5. Show import results after auto-sync
+6. Add loading states and animations
+
+**Files to create/modify**:
+- `client/src/components/GoogleDriveSync.tsx`
+- `client/src/components/SyncStatusIndicator.tsx`
+- `client/src/pages/ImportExport.tsx`
+- `client/src/components/app-sidebar.tsx` or header
+
+#### Phase 6: Testing & Polish (2-3 hours)
+1. Test auth flow (sign in/out)
+2. Test sync on data changes
+3. Test sync on app load
+4. Test offline behavior
+5. Test conflict resolution
+6. Test error scenarios
+7. Add loading states
+8. Polish animations and notifications
+
+### 7. Configuration & Deployment
+
+#### Environment Variables:
+```env
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+VITE_GOOGLE_API_KEY=your-api-key
+```
+
+#### Vite Configuration:
+```typescript
+// vite.config.ts
+export default defineConfig({
+  define: {
+    'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(process.env.VITE_GOOGLE_CLIENT_ID),
+    'import.meta.env.VITE_GOOGLE_API_KEY': JSON.stringify(process.env.VITE_GOOGLE_API_KEY),
+  }
+});
+```
+
+#### Google Cloud Console Setup:
+1. **Authorized JavaScript origins**:
+   - `http://localhost:5173` (development)
+   - `https://yourdomain.com` (production)
+
+2. **OAuth consent screen**:
+   - App name: "SwimTimes Manager"
+   - User support email
+   - Developer contact
+   - Scopes: `drive.appdata`
+
+3. **API restrictions**:
+   - Restrict API key to Google Drive API only
+   - Add HTTP referrer restrictions
+
+### 8. User Experience Flow
+
+#### First Time Setup:
+1. User opens app (not authenticated)
+2. Sees "Connect to Google Drive" card on Import/Export page
+3. Clicks "Sign in with Google"
+4. Google OAuth popup appears
+5. User grants permission
+6. App checks for existing cloud file
+7. If found: downloads and syncs
+8. If not found: uploads current data
+9. Shows success notification with sync status
+
+#### Normal Usage:
+1. User adds/edits swim times
+2. Changes saved to localStorage immediately
+3. After 2 seconds of inactivity:
+   - Sync icon shows "syncing" animation
+   - Data uploaded to Google Drive
+   - Success notification (unobtrusive)
+4. On next app load:
+   - Auto-downloads cloud data
+   - Merges with local changes
+   - Shows conflicts if any
+
+#### Multi-Device Scenario:
+1. User edits on Device A
+2. Data syncs to cloud
+3. User opens app on Device B
+4. App detects cloud data is newer
+5. Downloads and merges
+6. Shows "Synced from cloud" notification
+7. User sees updated data
+
+### 9. Future Enhancements
+
+#### Phase 2 (Future):
+- **Sync history viewer**: Show timeline of syncs
+- **Version history**: Keep multiple versions in cloud (Drive's built-in versioning)
+- **Selective sync**: Choose which athletes/events to sync
+- **Conflict resolution UI**: Visual diff for conflicting changes
+- **Backup rotation**: Keep multiple backup files with timestamps
+- **Team sharing**: Share data with other coaches (requires different Drive scope)
+
+#### Alternative Storage Options:
+- Google Sheets integration (for spreadsheet view)
+- Dropbox sync
+- OneDrive sync
+- Self-hosted backend option
+
+### 10. Testing Checklist
+
+**Authentication**:
+- [ ] Sign in with Google works
+- [ ] Sign out clears auth state
+- [ ] Token refresh works before expiry
+- [ ] Re-auth prompt on token failure
+- [ ] Multiple Google accounts support
+
+**File Operations**:
+- [ ] Creates file on first sync
+- [ ] Finds existing file on subsequent syncs
+- [ ] Uploads data correctly
+- [ ] Downloads data correctly
+- [ ] Handles file not found
+- [ ] Handles invalid JSON
+
+**Sync Logic**:
+- [ ] Auto-sync on data change (debounced)
+- [ ] Sync on app load
+- [ ] Bidirectional merge works correctly
+- [ ] Timestamp conflict resolution works
+- [ ] Alias conflicts detected
+- [ ] Duplicate suggestions work
+
+**Error Handling**:
+- [ ] Offline behavior (no crashes)
+- [ ] Network timeout handling
+- [ ] API error responses handled
+- [ ] Rate limit handling
+- [ ] Permission denied errors
+
+**UI/UX**:
+- [ ] Sync status displayed accurately
+- [ ] Loading states for all operations
+- [ ] Error messages are clear
+- [ ] Success notifications
+- [ ] Manual sync button works
+- [ ] Auto-sync toggle works
+
+**Multi-Device**:
+- [ ] Sync from Device A to Device B
+- [ ] Concurrent edits merge correctly
+- [ ] No data loss in any scenario
+
+### 11. Security Considerations
+
+**Data Privacy**:
+- Uses app data folder (hidden from user's Drive)
+- Data never exposed to other apps
+- Users can revoke access anytime
+
+**Token Security**:
+- Access tokens in memory only
+- No tokens in localStorage
+- HTTPS only for production
+- Proper CORS configuration
+
+**API Key Protection**:
+- Restricted to specific domains
+- Restricted to Drive API only
+- Not exposed in client code (use env vars)
+
+**Data Integrity**:
+- Validate JSON structure before import
+- Never delete data without user confirmation
+- Keep local storage as source of truth
+
+### 12. Dependencies
+
+**NPM Packages**:
+- None required! Use Google Identity Services CDN script
+- Or optionally: `gapi-script` package for TypeScript types
+
+**CDN Scripts** (add to index.html):
+```html
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js"></script>
+```
+
+### 13. Documentation Updates
+
+**README.md**:
+- Add section on Google Drive sync feature
+- Document how to get Google Cloud credentials
+- Add environment variable setup instructions
+
+**CLAUDE.md**:
+- Document new sync components
+- Add sync architecture to overview
+- Update storage layer documentation
+
+**User Documentation**:
+- Create help page in app
+- Add FAQ for common sync issues
+- Document how to disable sync
+- Document manual backup importance
+
+## Summary
+
+This plan provides a comprehensive approach to integrating Google Drive for automatic cloud sync. Key benefits:
+
+1. **Leverages existing infrastructure**: Uses the battle-tested import/export and conflict resolution logic
+2. **User-friendly**: Automatic sync with manual override options
+3. **Secure**: Uses OAuth 2.0, app data folder, and follows security best practices
+4. **Reliable**: Comprehensive error handling and offline support
+5. **Non-breaking**: Existing functionality remains unchanged, sync is optional
+
+**Estimated Total Time**: 17-23 hours of development
+
+**Priority**: High - This is a frequently requested feature for data safety and multi-device usage
+
+**Risk Level**: Medium - Requires careful handling of auth tokens and sync conflicts, but existing conflict resolution reduces risk significantly
