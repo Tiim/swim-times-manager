@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
-import { swimStorage } from "@/lib/storage";
+import { swimStorage, timeToSeconds } from "@/lib/storage";
 import type { SwimTime as SwimTimeType } from "@/lib/storage";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
@@ -76,7 +76,9 @@ export default function TimeProgression() {
       };
 
       poolMap.forEach((time, poolLength) => {
-        dataPoint[poolLength] = timeToSeconds(time.measuredTime);
+        const seconds = timeToSeconds(time.measuredTime);
+        if (!Number.isFinite(seconds)) return; // skip unreadable times
+        dataPoint[poolLength] = seconds;
         dataPoint[`${poolLength}_formatted`] = time.measuredTime;
         dataPoint[`${poolLength}_event`] = time.eventName;
       });
@@ -88,19 +90,6 @@ export default function TimeProgression() {
     dataPoints.sort((a, b) => a.date - b.date);
 
     setChartData(dataPoints);
-  };
-
-  const timeToSeconds = (timeString: string): number => {
-    const parts = timeString.split(":");
-    if (parts.length === 2) {
-      // MM:SS.ss format
-      const minutes = parseInt(parts[0]);
-      const seconds = parseFloat(parts[1]);
-      return minutes * 60 + seconds;
-    } else {
-      // SS.ss format
-      return parseFloat(timeString);
-    }
   };
 
   const secondsToTime = (seconds: number): string => {
