@@ -92,16 +92,30 @@ export interface ImportResult {
 
 const STORAGE_KEY = "swim-times-data";
 
-// Helper function to convert time string to seconds for comparison
-function timeToSeconds(timeStr: string): number {
-  const parts = timeStr.split(":");
-  if (parts.length === 2) {
-    // Format: MM:SS.ss
-    return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
-  } else {
-    // Format: SS.ss
-    return parseFloat(timeStr);
+/**
+ * Convert a time string to seconds for comparison.
+ * Accepts SS.ss, MM:SS.ss and H:MM:SS.ss, with "." or "," as the decimal mark.
+ * Returns NaN if the time can't be read.
+ */
+export function timeToSeconds(timeStr: string): number {
+  if (!timeStr) return NaN;
+  const parts = timeStr.trim().replace(",", ".").split(":");
+  if (parts.length > 3 || parts.some(p => !/^\d+(\.\d+)?$/.test(p))) {
+    return NaN;
   }
+  return parts.reduce((total, part) => total * 60 + parseFloat(part), 0);
+}
+
+/**
+ * True if `candidate` should replace `current` as the best time.
+ * Unreadable times never win, and never block a readable time from winning.
+ */
+function isFaster(candidate: string, current: string): boolean {
+  const a = timeToSeconds(candidate);
+  const b = timeToSeconds(current);
+  if (isNaN(a)) return false;
+  if (isNaN(b)) return true;
+  return a < b;
 }
 
 /**
@@ -619,7 +633,7 @@ class LocalSwimStorage {
       const key = `${time.athleteName}-${time.stroke}-${time.distance}-${time.poolLength}`;
       const existing = pbMap.get(key);
 
-      if (!existing || timeToSeconds(time.measuredTime) < timeToSeconds(existing.measuredTime)) {
+      if (!existing || isFaster(time.measuredTime, existing.measuredTime)) {
         pbMap.set(key, time);
       }
     }
@@ -664,7 +678,7 @@ class LocalSwimStorage {
       const key = `${time.stroke}-${time.distance}-${time.poolLength}`;
       const existing = pbMap.get(key);
 
-      if (!existing || timeToSeconds(time.measuredTime) < timeToSeconds(existing.measuredTime)) {
+      if (!existing || isFaster(time.measuredTime, existing.measuredTime)) {
         pbMap.set(key, time);
       }
     }
