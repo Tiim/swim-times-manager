@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { swimStorage } from "@/lib/storage";
+import { swimStorage, normalizeTimeFormat } from "@/lib/storage";
 import type { SwimTime } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -85,37 +85,6 @@ interface ImportedEntry extends Omit<SwimTime, 'id' | 'last_modified'> {
   _hasErrors?: boolean;
   _errors?: string[];
   _rawTime?: string;
-}
-
-// Time format normalization
-function normalizeTimeFormat(timeString: string): string {
-  if (!timeString) return "";
-
-  let normalized = timeString.trim();
-
-  // Handle mm:ss:ms format (convert middle : to .)
-  const colonCount = (normalized.match(/:/g) || []).length;
-  if (colonCount === 2) {
-    const parts = normalized.split(':');
-    normalized = `${parts[0]}:${parts[1]}.${parts[2]}`;
-  }
-
-  // Handle ss:ms format (should be ss.ms)
-  if (colonCount === 1 && !normalized.includes('.')) {
-    const parts = normalized.split(':');
-    if (parts[0].length <= 2 && parts.length === 2) {
-      normalized = `${parts[0]}.${parts[1]}`;
-    }
-  }
-
-  // Handle mm.ss.ms format (should be mm:ss.ms)
-  const periodCount = (normalized.match(/\./g) || []).length;
-  if (periodCount === 2) {
-    const parts = normalized.split('.');
-    normalized = `${parts[0]}:${parts[1]}.${parts[2]}`;
-  }
-
-  return normalized;
 }
 
 export default function ImportJSON() {

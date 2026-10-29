@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { swimStorage } from "@/lib/storage";
+import { swimStorage, normalizeTimeFormat, isValidTimeFormat } from "@/lib/storage";
 
 interface AddTimeFormProps {
   onSubmit?: (data: any) => void;
@@ -62,6 +62,7 @@ export function AddTimeForm({ onSubmit, initialData, isEditing = false, submitBu
   const [eventSearch, setEventSearch] = useState("");
   const [athleteNames, setAthleteNames] = useState<string[]>([]);
   const [eventNames, setEventNames] = useState<string[]>([]);
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   useEffect(() => {
     // Load unique athlete names and event names from storage
@@ -74,8 +75,13 @@ export function AddTimeForm({ onSubmit, initialData, isEditing = false, submitBu
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
-    onSubmit?.(formData);
+    if (!isValidTimeFormat(formData.time)) {
+      setTimeError("Use MM:SS.ss (e.g. 1:36.64) or SS.ss (e.g. 58.32)");
+      return;
+    }
+    setTimeError(null);
+    const submitted = { ...formData, time: normalizeTimeFormat(formData.time) };
+    onSubmit?.(submitted);
     // Only reset fields when adding (not editing)
     if (!isEditing) {
       // Only reset distance, stroke, and time - keep athlete, event, date, poolLength, and splits
@@ -394,12 +400,22 @@ export function AddTimeForm({ onSubmit, initialData, isEditing = false, submitBu
               <Input
                 id="time"
                 value={formData.time}
-                onChange={(e) => updateField("time", e.target.value)}
+                onChange={(e) => {
+                  setTimeError(null);
+                  updateField("time", e.target.value);
+                }}
+                onBlur={() => {
+                  if (formData.time) updateField("time", normalizeTimeFormat(formData.time));
+                }}
                 placeholder="MM:SS.ss or SS.ss"
                 className="font-mono"
+                aria-invalid={!!timeError}
                 required
                 data-testid="input-time"
               />
+              {timeError && (
+                <p className="text-sm text-destructive" data-testid="error-time">{timeError}</p>
+              )}
             </div>
 
             {getNumberOfSplits() > 0 && (

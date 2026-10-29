@@ -92,16 +92,55 @@ export interface ImportResult {
 
 const STORAGE_KEY = "swim-times-data";
 
-// Helper function to convert time string to seconds for comparison
-function timeToSeconds(timeStr: string): number {
-  const parts = timeStr.split(":");
+const TIME_REGEX = /^\d{1,2}:\d{2}\.\d{2}$|^\d{1,2}\.\d{2}$/;
+
+/**
+ * Fix common typos in time strings, e.g. "1.36.64" or "1:36:64" -> "1:36.64"
+ * and "58:32" -> "58.32". Returns the trimmed input if no fix applies.
+ */
+export function normalizeTimeFormat(timeString: string): string {
+  if (!timeString) return "";
+
+  let normalized = timeString.trim().replace(/,/g, ".");
+
+  const colonCount = (normalized.match(/:/g) || []).length;
+  const periodCount = (normalized.match(/\./g) || []).length;
+
+  if (colonCount === 2 && periodCount === 0) {
+    // mm:ss:hh -> mm:ss.hh
+    const parts = normalized.split(":");
+    normalized = `${parts[0]}:${parts[1]}.${parts[2]}`;
+  } else if (colonCount === 1 && periodCount === 0) {
+    // ss:hh -> ss.hh
+    const parts = normalized.split(":");
+    if (parts[0].length <= 2 && parts[1].length === 2) {
+      normalized = `${parts[0]}.${parts[1]}`;
+    }
+  } else if (colonCount === 0 && periodCount === 2) {
+    // mm.ss.hh -> mm:ss.hh
+    const parts = normalized.split(".");
+    normalized = `${parts[0]}:${parts[1]}.${parts[2]}`;
+  }
+
+  return normalized;
+}
+
+/** True if the time is in MM:SS.ss or SS.ss format (after fixing typos). */
+export function isValidTimeFormat(timeString: string): boolean {
+  return TIME_REGEX.test(normalizeTimeFormat(timeString));
+}
+
+/** Convert a time string to seconds. Invalid times return Infinity so they never count as a PB. */
+export function timeToSeconds(timeStr: string): number {
+  const normalized = normalizeTimeFormat(timeStr);
+  if (!TIME_REGEX.test(normalized)) return Infinity;
+  const parts = normalized.split(":");
   if (parts.length === 2) {
     // Format: MM:SS.ss
-    return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
-  } else {
-    // Format: SS.ss
-    return parseFloat(timeStr);
+    return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
   }
+  // Format: SS.ss
+  return parseFloat(normalized);
 }
 
 /**
@@ -216,8 +255,17 @@ class LocalSwimStorage {
         return migratedData;
       }
 
-      // Already version 2
-      return data as StoredData;
+      // Already version 2. Fix any badly formatted times (e.g. "1.36.64").
+      const v2 = data as StoredData;
+      let changed = false;
+      v2.swimTimes = (v2.swimTimes || []).map(time => {
+        const fixed = normalizeTimeFormat(time.measuredTime);
+        if (fixed === time.measuredTime) return time;
+        changed = true;
+        return { ...time, measuredTime: fixed };
+      });
+      if (changed) this.saveData(v2);
+      return v2;
     } catch (error) {
       console.error("Failed to load data from storage:", error);
       return {
@@ -559,6 +607,7 @@ class LocalSwimStorage {
 
     const newTime: SwimTime = {
       ...swimTime,
+      measuredTime: normalizeTimeFormat(swimTime.measuredTime),
       athleteName: resolvedName,
       id: generateUUID(),
       splits: swimTime.splits || null,
@@ -589,6 +638,7 @@ class LocalSwimStorage {
     data.swimTimes[index] = {
       ...data.swimTimes[index],
       ...updates,
+      ...(updates.measuredTime !== undefined && { measuredTime: normalizeTimeFormat(updates.measuredTime) }),
       last_modified: new Date().toISOString()
     };
 
@@ -771,6 +821,7 @@ class LocalSwimStorage {
           if (new Date(importedLastModified) > new Date(existingLastModified)) {
             const updatedTime: SwimTime = {
               ...time,
+              measuredTime: normalizeTimeFormat(time.measuredTime),
               athleteName: resolvedName,
               id: time.id,
               splits: time.splits || null,
@@ -786,6 +837,7 @@ class LocalSwimStorage {
 
         const newTime: SwimTime = {
           ...time,
+          measuredTime: normalizeTimeFormat(time.measuredTime),
           athleteName: resolvedName,
           id: time.id || generateUUID(),
           splits: time.splits || null,
